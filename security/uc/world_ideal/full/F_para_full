@@ -1,0 +1,119 @@
+### F_para
+
+```python 
+
+function init(paraid)
+    this.id = sid
+    cmsgNonce = 0
+    cmsgQueue = {}
+    cmsgConfirmQueue = {}
+    interHeaderQueue = {}
+    rootLayer01Queue = {}
+    dApps = {}
+
+
+function syncInterHeader(sid, header)
+    hht = header.height
+    assert interHeaderQueue[hht] is None
+    success = interLightClient.verify(header)
+    if not success:
+        return
+    interHeaderQueue[hht] = header
+
+function verifyLayer01(sid, interHeight, paraid, paraHeight, rootL01, proofL01):
+    header = interHeaderQueue[interHeight]
+    assert header is not None
+    rootQueue = rootLayer01Queue[paraid]
+    oldroot = rootQueue[paraHeight]
+    if oldroot is not None:
+        return oldroot == rootL01
+    success = interMerkleAlg.verify(header, rootL01, proofL01)
+    if not success:
+        return False
+    rootLayer01Queue[paraid][paraHeight] = rootL01
+
+function verifyLayer02CMsg(sid, paraid, paraHeight, cmsg, proofL02):
+    rootQueue = rootLayer01Queue[paraid]
+    rootL01 = rootQueue[paraHeight]
+    assert rootL01 is not None
+    success = interMerkleAlg.verify(header, rootL01, proofL02)
+    return success
+    
+function issue(sid, CMsg)
+    assert CMsg.srcid == this.id
+    payload = CMsg.payload
+    appid = payload.appid
+    assert dApps[appid] is not None
+    success, result = dApps[appid].execute(payload.data)
+    if not success:
+        reply {response: False}
+        return
+    cmsgNonce += 1
+    CMsg.nonce = cmsgNonce
+    compute unique CID with CMsg
+    CMsg.payload_dst = result
+    CMsg.state = STATE.ISSUED
+    cmsgQueue[CID] = CMsg
+    compute innerXRoot with CMsg
+    send (sid, CONFIRM, CMsg) to NET
+    reply {response: True, leakage: CMsg}
+
+function confirm(sid, CMsg, proof)
+    assert CMsg.dstid == this.id
+    compute unique CID with CMsg
+    assert cmsgConfirmQueue[CID] is None
+
+    # 
+    verify_CMsg(CMsg, proof)
+    # 
+
+    payload = CMsg.payload_dst
+    appid = payload.appid
+    assert dApps[appid] is not None
+    success, result = dApps[appid].execute(payload.data)
+    if not success:
+        reply {response: False}
+        return
+    CMsg.payload_ack = result
+    cmsgConfirmQueue[CID] = CMsg
+    compute innerXRoot with CMsg
+    send (sid, ACK, CMsg) to (F_ToR:ACK, ENVIRONMENT, leakage)
+    reply {response: True, leakage: CMsg}
+
+function ack(sid, CMsg, proof)
+    aassert CMsg.srcid == this.id
+    compute unique CID with CMsg
+    originCMsg = cmsgQueue[CID]
+    assert originCMsg is not None
+    assert originCMsg.state == STATE.ISSUED
+
+    # 
+    verify_CMsg(CMsg, proof)
+    # 
+
+    payload_ack = originCMsg.payload_ack
+    appid = payload_ack.appid
+    assert dApps[appid] is not None
+    dApps[appid].ack(payload_ack.data)
+    originCMsg.state = STATE.ACK
+
+function rollback(sid, CMsg, proof)
+    assert CMsg.srcid == this.id
+    compute unique CID with CMsg
+    originCMsg = cmsgQueue[CID]
+    assert originCMsg is not None
+    assert originCMsg.state == STATE.ISSUED 
+
+    # 
+    verifyLayer02CMsg(CMsg, proof)
+    # 
+
+    payload = originCMsg.payload
+    appid = payload.appid
+    assert dApps[appid] is not None
+    dApps[appid].rollback(payload.data)
+    originCMsg.state = STATE.ROLLBACK
+    cmsgQueue[CID] = originCMsg
+
+```
+

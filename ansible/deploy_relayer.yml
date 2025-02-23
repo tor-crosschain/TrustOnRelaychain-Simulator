@@ -1,0 +1,70 @@
+- hosts: web
+  remote_user: yiiguo
+  vars_files: 
+  - vars/main.yml
+  tasks:
+  - name: check every image and upload
+    vars:
+      dest_dir: /home/{{ ansible_user }}/installer/images
+    include_tasks: "check_images.yml"
+    when: item.reload
+    loop: "{{ images }}"
+  
+  - name: get all hosts
+    local_action:
+      module: ansible.builtin.debug
+      msg: "{{ groups[hosts_name][(item|int-1)%(hosts_len|int)] }}:{{ port_start + (item|int-1)//(hosts_len|int) + 1 }}"
+    run_once: True
+    register: allhosts
+    with_sequence: "{{ para_num | string  }}"
+
+  - name: start parachain relayers
+    vars:
+      chain_id: "{{ (item | int - 1) * hosts_len|int + cur_host_idx|int }}"
+      hosts: "{{ allhosts.results | map(attribute='msg') | join(' ') }}"
+      ccmode: "{{ ccmode|default('NoR') }}"
+      interhost: "{{ (groups[hosts_name][inter_host_idx]+':'+interchain_port|string) if ccmode in ['ToR', 'AoR'] else '' }}"
+    community.docker.docker_container:
+      name: "relayer_{{ cur_host_idx }}_{{ item }}"
+      image: cross_relayer
+      # ports:
+      # - "{{ port_start + item | int }}:8888"
+      command: "--idx {{ chain_id }} --hosts {{ hosts }} --ccmode {{ ccmode }} --interhost '{{ interhost }}'"
+      recreate: true # recreate if exists
+      log_driver: json-file
+      log_options:
+        max-size: "500m"
+        max-file: "5"
+    async: "{{ para_num_cur_host }}"
+    poll: 0
+    with_sequence: "{{ para_num_cur_host }}"
+    register: docker_up_results
+  
+  - name: Wait for asynchronous job to end
+    ansible.builtin.async_status:
+      jid: "{{ docker_up_item.ansible_job_id }}"
+    loop: "{{ docker_up_results.results }}"
+    loop_control:
+      loop_var: "docker_up_item"
+    register: job_result
+    until: job_result.finished
+    retries: 3
+    delay: 5
+  
+  - name: start interchain relayers
+    vars:
+      chain_id: "{{ interchain_id }}"
+      hosts: "{{ allhosts.results | map(attribute='msg') | join(' ') }}"
+      ccmode: "{{ ccmode }}"
+      interhost: "{{ (groups[hosts_name][inter_host_idx]+':'+interchain_port|string) if ccmode in ['ToR', 'AoR'] else '' }}"
+    community.docker.docker_container:
+      name: "relayer_{{ interchain_id }}"
+      image: cross_relayer
+      command: "--idx {{ interchain_id }} --hosts {{ hosts }} --ccmode {{ ccmode }} --interhost '{{ interhost }}'"
+      recreate: true # recreate if exists
+      log_driver: json-file
+      log_options:
+        max-size: "500m"
+        max-file: "5"
+    when: (ccmode in ['AoR', 'ToR']) and (cur_host_idx|int == inter_host_idx)
+    run_once: True

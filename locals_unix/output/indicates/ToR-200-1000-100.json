@@ -1,0 +1,15 @@
+{
+    "ccmode": "ToR",
+    "para_num": 200,
+    "xtx_ratio": 1.0,
+    "interalltxs": 9213,
+    "interdur": 111.30620431900024,
+    "tps": 2737.1230070278893,
+    "latency_avg": 40.37866110424757,
+    "workload_file": "./locals_unix/output/workloads/ToR-200-1000-100.json",
+    "real time cost": 73.06942343711853,
+    "deal time cost": 99.94801316293888,
+    "ts_src_avg": 7.435009215238094,
+    "ts_rly_avg": 11.26189491122961,
+    "ts_dst_avg": 6.6938848885142805
+}

@@ -1,0 +1,75 @@
+### F_ToR
+```python
+upon receive setup(ID_src, ID_dst)
+    assert ID_src != ID_dst
+    P_src.id = ID_src
+    P_dst.id = ID_dst
+    if CSC_src not exist on P_src:
+        deploy CSC_src on P_src
+    if CSC_dst not exist on P_dst:
+        deploy CSC_dst on P_dst   
+    generate unique session identifier S_id
+    sessions[S_id] = {srcid: P_src.id, dstid:P_dst.id, csrc: CSC_src, cdst: CSC_dst, state: STARTED}
+
+upon receive issue(sid, ID_src, ID_dst, data)
+    session = sessions[sid]
+    assert session is not None
+    assert session.state == STARTED
+    assert session.srcid == ID_src
+    assert session.dstid == ID_dst
+    construct CMsg = {srcid: ID_src, dstid: ID_dst, payload: data}
+    send (sid, CMsg) to F_para:issue
+    wait for (issue, response, leakage) s.t response in [True, False]
+    if response is False:
+        session.state = TERMINATED
+        sessions[sid] = session
+        terminate session
+    send (issue, response, leakage) to ENVIRONMENT
+
+upon receive confirm(sid, CMsg)
+    session = sessions[sid]
+    assert session is not None
+    assert session.state == STARTED
+    assert session.srcid == CMsg.srcid
+    assert session.dstid == CMsg.dstid
+    send (sid, CMsg) to F_para:confirm
+    wait for (confirm, response, leakage) s.t response in [True, False]
+    if response is False:
+        send (sid, CMsg) to F_ToR:rollback
+        session.state = TERMINATED
+        sessions[sid] = session
+        terminate session
+    send (confirm, response, leakage) to ENVIRONMENT
+
+upon receive ack(sid, CMsg)
+    session = sessions[sid]
+    assert session is not None
+    assert session.state == STARTED
+    assert session.srcid == CMsg.srcid
+    assert session.dstid == CMsg.dstid
+    send (sid, CMsg) to F_para:ack
+    send (ack, leakage) to ENVIRONMENT
+    session.state = FINISHED
+    sessions[sid] = session
+
+upon receive rollback(sid, CMsg)
+    session = sessions[sid]
+    assert sender == F_ToR
+    assert session is not None
+    assert session.state == STARTED
+    assert session.srcid == CMsg.srcid
+    assert session.dstid == CMsg.dstid
+    send (sid, CMsg) to F_para:rollback
+    send (rollback, leakage) to ENVIRONMENT
+
+upon receive syncInterHeaderToPara(sid, interHeader)
+    # receive block header from R_0
+    send (interHeader) to F_para:syncInterHeader
+
+upon receive syncParaHeaderToInter(sid, paraid, paraHeader)
+    # receive block header from P_paraid
+    send (paraid, paraHeader) to F_inter:syncParaHeader
+
+function submitLayer01(sid, )
+    
+```

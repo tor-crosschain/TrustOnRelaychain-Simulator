@@ -1,0 +1,37 @@
+- hosts: web
+  remote_user: yiiguo
+  tasks:
+  - name: Check installer exist
+    stat:
+      path: /home/{{ ansible_user }}/installer
+    register: directory_data
+
+  - name: mkdir installer
+    ansible.builtin.file:
+      path: /home/{{ ansible_user }}/installer
+      state: directory
+      mode: '0755'
+    when: not directory_data.stat.exists
+
+  - name: check miniconda3 exist
+    stat:
+      path: /home/{{ ansible_user }}/installer/miniconda3/bin/python
+    register: pythonbin
+  
+  - name: copy miniconda3
+    synchronize:
+      src: prebins/Miniconda3-latest-Linux-x86_64.sh
+      dest: /home/{{ ansible_user }}/installer
+      mode: push
+    when: not pythonbin.stat.exists
+    notify:
+    - install miniconda3
+  
+  handlers:
+  - name: install miniconda3
+    ansible.builtin.shell: 
+      bash /home/{{ ansible_user }}/installer/Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/installer/miniconda3;
+      echo -n "Conda version:";
+      $HOME/installer/miniconda3/bin/conda --version;
+      echo -n "Python version:";
+      $HOME/installer/miniconda3/bin/python --version;

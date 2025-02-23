@@ -1,0 +1,91 @@
+- hosts: test
+  become: true
+  become_user: yiiguo
+  vars:
+    hosts_name: "test"
+    hosts_len: "{{ groups[hosts_name] | length }}" 
+    para_num: 7
+    port_start: 9000
+    cur_idx: "{{ groups[hosts_name].index(inventory_hostname) }}"
+    cur_host_idx: "{{ groups[hosts_name].index(inventory_hostname) }}"
+    para_num_cur_host: "{{ para_num // (hosts_len | int) + ((para_num % (hosts_len | int)) > cur_host_idx | int)  }}"
+    chain_types:
+    - Ethereum
+    - Tendermint
+    ratio_eth: 0.5
+    inter_host_idx: 0
+  gather_facts: false
+  tasks:
+  - name: calc index
+    # vars:
+      
+    ansible.builtin.debug:
+      msg: "{{ inventory_hostname  }}, {{ hosts_len }}, {{ cur_idx }}, {{ para_num // (hosts_len | int) + ((para_num % (hosts_len | int)) > cur_idx | int)  }}"
+
+  - name: set chain info -> ( chain_id, chain_type )
+    vars:
+      this_host: "{{ inventory_hostname }}:{{ port_start + item | int }}"
+      chain_id: "{{ (item | int - 1) * hosts_len|int + cur_host_idx|int }}"
+      chain_type: "{{ chain_types[chain_id|int / para_num > ratio_eth] }}"
+    ansible.builtin.debug: 
+      msg: "pipenv run python scripts/crossinfo.py --host {{ this_host }} --chain_id {{ chain_id }} --chain_type {{ chain_type }}, item: {{ item }}, ratio: {{ chain_id|int / para_num > ratio_eth }}"
+    with_sequence: "{{ para_num_cur_host }}"
+    delegate_to: 127.0.0.1
+  
+  - name: get all hosts
+    local_action:
+      module: ansible.builtin.debug
+      msg: "{{ groups[hosts_name][(item|int-1)%(hosts_len|int)] }}:{{ port_start + (item|int-1)//(hosts_len|int) + 1 }}"
+    run_once: True
+    register: allhosts
+    with_sequence: "{{ para_num | string  }}"
+
+  - name: get host names
+    vars:
+      chain_id: "{{ (item | int - 1) * hosts_len|int + cur_host_idx|int }}"
+      # hosts: "{{ range(allhosts.results | length) | map('extract', allhosts.results, ['msg']) | join(' ') }}"
+      hosts: "{{ allhosts.results | map(attribute='msg') | join(' ') }}"
+    ansible.builtin.debug:
+      msg: "--idx {{ chain_id }} --hosts {{ hosts }}"
+      # --idx 0 --chain_type Tendermint --hosts 10.21.4.31:9001 10.21.4.35:9001 10.21.4.31:9002
+    with_sequence: "{{ para_num_cur_host }}"
+  
+  - name: write allhosts to file
+    connection: local
+    local_action:
+      # module: ansible.builtin.debug
+      # msg: "hi"
+      module: ansible.builtin.copy
+      content: "{{ allhosts.results | map(attribute='msg') | join(',') }}"
+      dest: "{{ inventory_dir }}/deployedhosts"
+    run_once: True
+  
+  - name: write allhosts to file by script
+    connection: local # only run on localhost without ssh
+    local_action:
+      module: ansible.builtin.command
+      cmd: echo {{ allhosts.results | map(attribute='msg') | join(',') }} > {{ inventory_dir }}/deployedhosts.test
+    run_once: True
+  
+  - name: write allhosts to file by raw
+    connection: local
+    local_action: ansible.builtin.raw echo "{{ allhosts.results | map(attribute='msg') | join(',') }}" > {{ inventory_dir }}/deployedhosts_raw.test
+      # executable: /bin/bash
+    run_once: True
+  
+  - name: write special symbols to file
+    connection: local
+    local_action: ansible.builtin.raw echo "\n{{ groups[hosts_name][inter_host_idx] }}:{{ port_start + para_num_cur_host|int + 1 }}" >> test.test
+  
+  - name: test value in list
+    vars:
+      values: ["NoR", "ToR", "AoR"]
+    debug:
+      msg: "yes {{ ccmode|default('NoR') }}"
+    when: ccmode|default("NoR") in values
+  
+  - name: if statement
+    vars:
+      interhost: "{{ (groups[hosts_name][inter_host_idx]+':8999') if ccmode in ['ToR', 'AoR'] else '' }}"
+    debug:
+      msg: "interhost: {{ interhost }}"

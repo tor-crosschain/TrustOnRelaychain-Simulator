@@ -1,0 +1,18 @@
+- hosts: web
+  remote_user: yiiguo
+  vars:
+    python_prefix: /home/{{ ansible_user }}/installer/miniconda3/bin
+    ansible_python_interpreter: "{{ python_prefix }}/python"
+    packages:
+    - docker
+  tasks:
+  - name: install require python packages
+    ansible.builtin.shell:
+      "{{ python_prefix }}/pip install {{ item }}"
+    register: output
+    loop: "{{ packages }}"
+  
+  - name: print output
+    ansible.builtin.debug:
+      msg: "{{ item.stdout }}"
+    loop: "{{ output.results }}"

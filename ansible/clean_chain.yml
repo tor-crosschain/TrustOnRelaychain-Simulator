@@ -1,0 +1,33 @@
+- hosts: web
+  remote_user: yiiguo
+  vars_files: 
+  - vars/main.yml
+  
+  tasks:
+  # - name: Stop a container
+  #   community.docker.docker_container:
+  #     name: "parachain_{{ cur_host_idx }}_{{ item }}"
+  #     state: stopped
+  #   with_sequence: "{{ para_num_cur_host }}"
+
+  - name: Remove container
+    community.docker.docker_container:
+      name: "parachain_{{ cur_host_idx }}_{{ item }}"
+      state: absent
+    async: "{{ para_num_cur_host }}"
+    poll: 0
+    with_sequence: "{{ para_num_cur_host }}"
+  
+  # - name: Stop inter chain
+  #   community.docker.docker_container:
+  #     name: interchain
+  #     state: stopped
+  #   when: (ccmode | default("NoR") in ["ToR", "AoR"]) and (cur_host_idx|int == inter_host_idx) # only run inter on first machine
+  #   run_once: True
+  
+  - name: Remove inter chain
+    community.docker.docker_container:
+      name: interchain
+      state: absent
+    when: (ccmode | default("NoR") in ["ToR", "AoR"]) and (cur_host_idx|int == inter_host_idx) # only run inter on first machine
+    run_once: True

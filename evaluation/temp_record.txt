@@ -1,0 +1,16 @@
+configs = [Config(block_size=100, block_interval=1, mempool_size=1000000)] * CHAINNUM
+inter_config = Config(block_size=500, block_interval=1, mempool_size=1000000)
+ratio = 1.0,
+TXNUM = 2000
+
+AoR:
+    TPS:
+        5(eth=5): 44.86, 132.65
+
+ToR:
+    TPS:
+        5(eth=5): 233.22, 27.23; 175.16, 42.71
+
+NoR:
+    TPS:
+        5(eth=5): 130.89, 45.99; 110.37, 56.17

@@ -1,0 +1,102 @@
+- hosts: web
+  remote_user: yiiguo
+  vars_files: 
+  - vars/main.yml
+  tasks:
+  - name: check every image and upload
+    vars:
+      dest_dir: /home/{{ ansible_user }}/installer/images
+    include_tasks: "check_images.yml"
+    when: item.reload
+    loop: "{{ images }}"
+
+  - name: start {{ para_num }} parachains to {{ hosts_len }} machines
+    community.docker.docker_container:
+      name: "parachain_{{ cur_host_idx }}_{{ item }}"
+      image: chain_sim
+      ports:
+      - "{{ port_start + item | int }}:8888"
+      command: "{{ parachain_config }}"
+      recreate: true # recreate if exists
+      log_driver: json-file
+      log_options:
+        max-size: "500m"
+        max-file: "5"
+    async: "{{ para_num_cur_host }}"
+    poll: 0
+    with_sequence: "{{ para_num_cur_host }}"
+    register: docker_up_results
+  
+  - name: Wait for asynchronous job to end
+    ansible.builtin.async_status:
+      jid: "{{ docker_up_item.ansible_job_id }}"
+    loop: "{{ docker_up_results.results }}"
+    loop_control:
+      loop_var: "docker_up_item"
+    register: job_result
+    until: job_result.finished
+    retries: 3
+    delay: 5
+  
+  - name: set chain info -> ( chain_id, chain_type )
+    vars:
+      this_host: "{{ inventory_hostname }}:{{ port_start + item | int }}"
+      # chain_id start from 0
+      chain_id: "{{ (item | int - 1) * hosts_len|int + cur_host_idx|int }}"
+      chain_type: "{{ chain_types[(chain_id|int+1) / para_num > ratio_eth] }}"
+    ansible.builtin.script: scripts/crossinfo.py --host {{ this_host }} --chain_id {{ chain_id }} --chain_type {{ chain_type }}
+    args:
+      executable: "{{ ansible_python_interpreter }}"
+      # chdir: "{{ playbook_dir }}"
+    with_sequence: "{{ para_num_cur_host }}"
+  
+  - name: write ccmode to file
+    connection: local
+    local_action: ansible.builtin.raw echo "ccmode{{':'}} {{ ccmode|default('NoR') }}" > {{ inventory_dir }}/deployedhosts
+    run_once: True
+
+  - name: get parachains hosts
+    local_action:
+      module: ansible.builtin.debug
+      msg: "{{ groups[hosts_name][(item|int-1)%(hosts_len|int)] }}:{{ port_start + (item|int-1)//(hosts_len|int) + 1 }}"
+    run_once: True
+    register: allhosts
+    with_sequence: "{{ para_num | string  }}"
+
+  - name: write parachains' hosts to file
+    connection: local
+    local_action: ansible.builtin.raw echo "parahosts{{':'}} {{ allhosts.results | map(attribute='msg') | join(',') }}" >> {{ inventory_dir }}/deployedhosts
+    run_once: True
+
+  - name: create an inter chain
+    community.docker.docker_container:
+      name: interchain
+      image: chain_sim
+      ports:
+      - "{{ interchain_port }}:8888"
+      command: "{{ interchain_config }}"
+      recreate: true # recreate if exists
+      log_driver: json-file
+      log_options:
+        max-size: "500m"
+        max-file: "5"
+    when: (ccmode | default("NoR") in ["ToR", "AoR"]) and (cur_host_idx|int == inter_host_idx) # only run inter on first machine
+    run_once: True
+    notify:
+    - write interchain's host to file
+    - set interchain info
+
+  handlers:
+  - name: write interchain's host to file
+    connection: local # append to deployedhosts second line
+    local_action: ansible.builtin.raw echo "interhost{{':'}} {{ groups[hosts_name][inter_host_idx] }}:{{ interchain_port }}" >> {{ inventory_dir }}/deployedhosts
+
+  - name: set interchain info
+    vars:
+      this_host: "{{ groups[hosts_name][inter_host_idx] }}:{{ interchain_port }}"
+      # chain_id start from 0
+      chain_id: 30000
+      chain_type: "Tendermint"
+    ansible.builtin.script: scripts/crossinfo.py --host {{ this_host }} --chain_id {{ chain_id }} --chain_type {{ chain_type }}
+    args:
+      executable: "{{ ansible_python_interpreter }}"

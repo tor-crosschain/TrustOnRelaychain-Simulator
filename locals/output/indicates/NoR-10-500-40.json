@@ -1,0 +1,1 @@
+{"ccmode": "NoR", "para_num": 10, "xtx_ratio": 0.4, "interalltxs": 0, "interdur": 0, "tps": 89.53692357631773, "latency_avg": 17.406373254776, "workload_file": "./locals/output/workloads/NoR-10-500-40.json", "real time cost": 22.337153434753418, "deal time cost": 26.26008586201351, "ts_src_avg": 7.185444675922394, "ts_rly_avg": 4.0621070655584335, "ts_dst_avg": 5.289300563812255}

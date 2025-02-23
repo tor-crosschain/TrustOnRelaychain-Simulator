@@ -1,0 +1,4 @@
+--mempool_size=10000000
+--api_port=8888
+--block_size=100
+--block_interval=2

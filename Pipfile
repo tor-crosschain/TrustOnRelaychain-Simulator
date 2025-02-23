@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pytest = "*"
+requests = "*"
+tornado = "*"
+sphinx = "*"
+pre-commit = "*"
+black = "*"
+ansible = "*"
+matplotlib = "*"
+pytest-asyncio = "*"
+uvloop = "*"
+loguru = "*"
+
+[dev-packages]
+ansible-lint = "*"
+pyyaml = "*"
+
+[requires]
+python_version = "3.8"
+python_full_version = "3.8.10"

@@ -1,0 +1,11 @@
+.vscode
+__pycache__
+.pytest_cache
+temp
+*.log
+ansible/prebins/*
+ansible/deployedhosts
+*.test
+output*.jpg
+output_test
+.VSCodeCounter

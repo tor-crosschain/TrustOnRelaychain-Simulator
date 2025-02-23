@@ -1,0 +1,17 @@
+{
+    "ccmode": "AoR",
+    "para_num": 100,
+    "xtx_ratio": 1.0,
+    "interalltxs": 89272,
+    "interdur": 800.9457476139069,
+    "tps": 64.4030733207566,
+    "latency_avg": 387.48293284182546,
+    "workload_file": "./locals_unix/output/workloads/AoR-100-500-100.json",
+    "real time cost": 776.3604657649994,
+    "deal time cost": 790.5660563400015,
+    "ts_src_avg": 5.45862760032177,
+    "ts_rly01_avg": 24.9545136927557,
+    "ts_inter_avg": 76.08436119064808,
+    "ts_rly02_avg": 275.4401983598137,
+    "ts_dst_avg": 3.0284577582073213
+}
