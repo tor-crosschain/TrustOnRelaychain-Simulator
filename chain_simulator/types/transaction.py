@@ -212,8 +212,3 @@ class TransactionReceipt(object):
         self.tx: Transaction = tx
         self.out: str = out
         self.code: int = code  # 0: false; 1: true
-
-
-if __name__ == "__main__":
-    tx = Transaction(sender="yiiguo", data="hello simulator!", memo="01")
-    print(tx.as_json())
