@@ -1,5 +1,7 @@
 # A cross-chain simulator for evaluating the performance of ToR
 
+> The implementation version of ToR on Ethereum is in another repository [TrustOnRelaychain](https://github.com/tor-crosschain/TrustOnRelaychain)
+
 ## Introduction
 
 The cross-chain simulator consists of two parts: chain simulator + relayer.
