@@ -18,7 +18,7 @@ pip install pipenv
 
 # Enter the pipenv environment
 
-pipenv shell --python <path of python-3.8.10>
+pipenv shell --python 'path of python-3.8.10'
 
 # Install dependencies
 pipenv install
@@ -44,7 +44,14 @@ python locals_unix/evaluate.py --ccmode='ToR'
 # Execute the program in the background
 nohup python locals_unix/evaluate.py --ccmode='ToR' --txnum=500 --xtxratio=1.0 --chainnum=100 2>&1 >temp/evaluate.log &
 ```
+
 After the program execution is complete, the evaluation results will be saved in a file, which is stored in the `locals_unix/output/indicates` folder with the file name `{ccmode}-{chainnum}-{txnum}-{int(xtxratio*100)}`; the `locals_unix/output/workloads` file contains the workload of each chain (the workload value is obtained every second).
+
+Draw the figures by the next command. The result figures are in `./locals_unix/plot`.
+
+```bash
+python locals_unix/plot.py
+```
 
 
 <!-- ## Remote Multi-Machine Deployment
