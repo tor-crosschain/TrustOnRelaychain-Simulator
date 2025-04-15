@@ -26,7 +26,7 @@ pipenv shell --python 'path of python-3.8.10'
 pipenv install
 ```
 
-## Local Execution
+## Evaluations
 
 The program files are in the `locals_unix/` folder, and the configuration can be passed in through the command line, such as `CHAINNUM`, `XTXNUM`, `BASE_PORT`, etc.
 
